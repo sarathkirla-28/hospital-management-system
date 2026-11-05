@@ -70,6 +70,11 @@ async function runTestSuite() {
   // 1. Initialize DB with seed data
   await seedDatabase();
 
+  // Clean any residual test users from prior runs to ensure test idempotency
+  try {
+    await db.run("DELETE FROM users WHERE email LIKE ?", ['test.patient.%']);
+  } catch (_) {}
+
   // 2. Start Test Server
   await new Promise((resolve) => {
     serverInstance = app.listen(TEST_PORT, '127.0.0.1', () => {
@@ -380,6 +385,9 @@ async function runTestSuite() {
   } catch (err) {
     console.error('Test suite unexpected error:', err);
   } finally {
+    try {
+      await db.run("DELETE FROM users WHERE email LIKE ?", ['test.patient.%']);
+    } catch (_) {}
     if (serverInstance) {
       serverInstance.close();
     }

@@ -6,7 +6,14 @@ const db = require('./db');
 async function seedDatabase() {
   console.log('--- Initializing Database Schema ---');
   const schemaPath = path.resolve(__dirname, '../../database/schema.sql');
-  const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+  let schemaSql = fs.readFileSync(schemaPath, 'utf8');
+
+  if (db.type === 'postgres') {
+    schemaSql = schemaSql
+      .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY')
+      .replace(/BOOLEAN NOT NULL DEFAULT 1/gi, 'BOOLEAN NOT NULL DEFAULT TRUE')
+      .replace(/BOOLEAN DEFAULT 1/gi, 'BOOLEAN DEFAULT TRUE');
+  }
 
   // Split and execute statements
   const statements = schemaSql
@@ -151,7 +158,7 @@ async function seedDatabase() {
     );
     const docRes = await db.run(
       `INSERT INTO doctors (user_id, department_id, specialization, qualification, experience_years, consultation_fee, room_number, bio, is_available)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, true)`,
       [userRes.lastInsertRowid, d.deptId, d.specialization, d.qualification, d.experience, d.fee, d.room, d.bio]
     );
 
@@ -161,7 +168,7 @@ async function seedDatabase() {
     for (const s of d.schedules) {
       await db.run(
         `INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, slot_duration_minutes, is_active)
-         VALUES (?, ?, ?, ?, 30, 1)`,
+         VALUES (?, ?, ?, ?, 30, true)`,
         [docId, s.day, s.start, s.end]
       );
     }

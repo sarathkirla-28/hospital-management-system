@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS doctors (
     consultation_fee DECIMAL(10, 2) NOT NULL DEFAULT 50.00,
     room_number VARCHAR(50) NOT NULL,
     bio TEXT,
-    is_available BOOLEAN NOT NULL DEFAULT 1,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS doctor_schedules (
     start_time VARCHAR(10) NOT NULL,
     end_time VARCHAR(10) NOT NULL,
     slot_duration_minutes INTEGER NOT NULL DEFAULT 30,
-    is_active BOOLEAN NOT NULL DEFAULT 1,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
 );
 

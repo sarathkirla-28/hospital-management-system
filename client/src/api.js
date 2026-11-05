@@ -4,7 +4,20 @@
  * Ensures the entire application works 100% out-of-the-box in standalone, local, and GitHub Pages modes.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (window.location.port === '5173' ? 'http://localhost:8082/api' : '/api');
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const normalizeBase = (url) => {
+  if (!url) return '';
+  const trimmed = url.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+const API_BASE_URL = rawApiUrl
+  ? normalizeBase(rawApiUrl)
+  : (window.location.port === '5173' ? 'http://localhost:8082/api' : '/api');
+
+function getAuthHeader() {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
 
 // Initial Demonstration Data Seed
 const INITIAL_DEMO_DATA = {
@@ -189,10 +202,18 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, requested_role })
       });
+      const data = await res.json().catch(() => null);
       if (res.ok) {
-        return await res.json();
+        return data;
       }
-    } catch (_) {}
+      if (res.status === 401 || res.status === 403 || res.status === 400 || res.status === 409) {
+        throw new Error(data?.error || 'Invalid email or password.');
+      }
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) {
+        throw err;
+      }
+    }
 
     // Fallback to local store
     const data = store.getData();
@@ -231,8 +252,16 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patientData)
       });
-      if (res.ok) return await res.json();
-    } catch (_) {}
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (res.status >= 400 && res.status < 500 && data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) {
+        throw err;
+      }
+    }
 
     const data = store.getData();
     if (data.users.some(u => u.email.toLowerCase() === patientData.email.toLowerCase())) {
@@ -417,20 +446,17 @@ export const api = {
   },
 
   bookAppointment: async ({ doctor_id, appointment_date, slot_time, symptoms }) => {
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_BASE_URL}/patient/appointments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ doctor_id, appointment_date, slot_time, symptoms })
       });
-      if (res.ok) return await res.json();
-      if (res.status === 409) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || 'This slot is already booked.');
-      }
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
     } catch (e) {
-      if (e.message.includes('already booked')) throw e;
+      if (e.message && !e.message.includes('fetch')) throw e;
     }
 
     const data = store.getData();
@@ -484,15 +510,18 @@ export const api = {
   },
 
   cancelAppointment: async (appId, reason) => {
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_BASE_URL}/patient/appointments/${appId}/cancel`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ reason })
       });
-      if (res.ok) return await res.json();
-    } catch (_) {}
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
 
     const data = store.getData();
     const app = data.appointments.find(a => a.id === Number(appId));
@@ -513,15 +542,18 @@ export const api = {
   },
 
   rescheduleAppointment: async (appId, new_date, new_slot) => {
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_BASE_URL}/patient/appointments/${appId}/reschedule`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ new_date, new_slot })
       });
-      if (res.ok) return await res.json();
-    } catch (_) {}
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
 
     const data = store.getData();
     const app = data.appointments.find(a => a.id === Number(appId));
@@ -543,6 +575,19 @@ export const api = {
   },
 
   updatePatientProfile: async (profileData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/patient/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(profileData)
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const pat = data.patients[0];
     Object.assign(pat, profileData);
@@ -554,16 +599,43 @@ export const api = {
   // Doctor Portal
   // -------------------------------------------------------------
   getDoctorProfile: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/doctor/profile`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+
     const data = store.getData();
     return { doctor: data.doctors[0], schedules: data.doctors[0].schedules };
   },
 
   getDoctorAppointments: async (params = '') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/doctor/appointments${params}`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+
     const data = store.getData();
     return { appointments: data.appointments };
   },
 
   updateDoctorAppointmentStatus: async (appId, status, notes) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/doctor/appointments/${appId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ status, doctor_notes: notes })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const app = data.appointments.find(a => a.id === Number(appId));
     if (app) {
@@ -575,6 +647,19 @@ export const api = {
   },
 
   updateDoctorAvailability: async (isAvailable) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/doctor/availability`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ is_available: isAvailable })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     data.doctors[0].is_available = isAvailable;
     store.saveData(data);
@@ -582,6 +667,19 @@ export const api = {
   },
 
   updateDoctorSchedules: async (schedules) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/doctor/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ schedules })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     data.doctors[0].schedules = schedules;
     store.saveData(data);
@@ -641,11 +739,31 @@ export const api = {
   },
 
   getAdminPatients: async (params = '') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/users/patients${params}`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+
     const data = store.getData();
     return { patients: data.patients };
   },
 
   toggleUserStatus: async (userId, status) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const u = data.users.find(user => user.id === Number(userId));
     if (u) u.status = status;
@@ -656,11 +774,31 @@ export const api = {
   },
 
   getAdminDoctors: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/doctors`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+
     const data = store.getData();
     return { doctors: data.doctors };
   },
 
   addDoctor: async (docData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/doctors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(docData)
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const newUserId = data.users.length + 1;
     const newDocId = data.doctors.length + 1;
@@ -703,6 +841,19 @@ export const api = {
   },
 
   updateDoctor: async (id, docData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/doctors/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(docData)
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const doc = data.doctors.find(d => d.id === Number(id));
     if (doc) {
@@ -713,6 +864,19 @@ export const api = {
   },
 
   addDepartment: async (deptData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/departments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(deptData)
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const newDept = {
       id: data.departments.length + 1,
@@ -728,11 +892,31 @@ export const api = {
   },
 
   getAdminAppointments: async (params = '') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/appointments${params}`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+
     const data = store.getData();
     return { appointments: data.appointments };
   },
 
   updateAppointmentStatusByAdmin: async (appId, status, notes) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/appointments/${appId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ status, notes })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) return data;
+      if (data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+    }
+
     const data = store.getData();
     const app = data.appointments.find(a => a.id === Number(appId));
     if (app) {
@@ -744,6 +928,15 @@ export const api = {
   },
 
   exportAppointmentsCsv: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/export-csv`, {
+        headers: getAuthHeader()
+      });
+      if (res.ok) {
+        return await res.blob();
+      }
+    } catch (_) {}
+
     const data = store.getData();
     const headers = ['Appointment Number', 'Date', 'Time Slot', 'Status', 'Department', 'Doctor Name', 'Room', 'Patient Name', 'Patient Email', 'Patient Phone'];
     const rows = data.appointments.map(a => [

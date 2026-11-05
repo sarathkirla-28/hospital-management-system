@@ -8,7 +8,7 @@ router.get('/departments', async (req, res) => {
     const departments = await db.all(
       `SELECT d.*, COUNT(doc.id) as doctor_count 
        FROM departments d
-       LEFT JOIN doctors doc ON d.id = doc.department_id AND doc.is_available = 1
+       LEFT JOIN doctors doc ON d.id = doc.department_id AND doc.is_available = TRUE
        GROUP BY d.id
        ORDER BY d.name ASC`
     );
@@ -54,7 +54,7 @@ router.get('/doctors', async (req, res) => {
     // Fetch schedules for each doctor
     for (const doc of doctors) {
       const schedules = await db.all(
-        'SELECT day_of_week, start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = ? AND is_active = 1',
+        'SELECT day_of_week, start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = ? AND is_active = TRUE',
         [doc.id]
       );
       doc.schedules = schedules;
@@ -106,7 +106,7 @@ router.get('/doctors/:id/available-slots', async (req, res) => {
 
     // Find schedule for that day
     const schedule = await db.get(
-      'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = ? AND day_of_week = ? AND is_active = 1',
+      'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = ? AND day_of_week = ? AND is_active = TRUE',
       [doctorId, dayOfWeek]
     );
 
@@ -175,7 +175,7 @@ router.get('/doctors/:id/available-slots', async (req, res) => {
 // GET /api/public/stats
 router.get('/stats', async (req, res) => {
   try {
-    const totalDoctors = await db.get("SELECT COUNT(*) as count FROM doctors WHERE is_available = 1");
+    const totalDoctors = await db.get("SELECT COUNT(*) as count FROM doctors WHERE is_available = TRUE");
     const totalDepartments = await db.get("SELECT COUNT(*) as count FROM departments");
     const totalAppointments = await db.get("SELECT COUNT(*) as count FROM appointments WHERE status = 'Completed'");
 

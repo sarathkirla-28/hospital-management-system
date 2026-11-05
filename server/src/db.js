@@ -4,6 +4,30 @@ const fs = require('fs');
 let dbInstance = null;
 const isPostgres = !!process.env.DATABASE_URL;
 
+function toPostgresSql(sql) {
+  let paramIndex = 1;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let result = '';
+
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      result += char;
+    } else if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      result += char;
+    } else if (char === '?' && !inSingleQuote && !inDoubleQuote) {
+      result += `$${paramIndex++}`;
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
+}
+
 if (isPostgres) {
   const { Pool } = require('pg');
   const pool = new Pool({
@@ -13,20 +37,28 @@ if (isPostgres) {
 
   dbInstance = {
     type: 'postgres',
+    raw: pool,
     async query(sql, params = []) {
-      const res = await pool.query(sql, params);
+      const pgSql = toPostgresSql(sql);
+      const res = await pool.query(pgSql, params);
       return res;
     },
     async get(sql, params = []) {
-      const res = await pool.query(sql, params);
+      const pgSql = toPostgresSql(sql);
+      const res = await pool.query(pgSql, params);
       return res.rows[0] || null;
     },
     async all(sql, params = []) {
-      const res = await pool.query(sql, params);
+      const pgSql = toPostgresSql(sql);
+      const res = await pool.query(pgSql, params);
       return res.rows;
     },
     async run(sql, params = []) {
-      const res = await pool.query(sql, params);
+      let pgSql = sql.trim();
+      if (pgSql.toUpperCase().startsWith('INSERT') && !pgSql.toUpperCase().includes('RETURNING')) {
+        pgSql += ' RETURNING id';
+      }
+      const res = await pool.query(toPostgresSql(pgSql), params);
       return {
         changes: res.rowCount,
         lastInsertRowid: res.rows && res.rows[0] ? res.rows[0].id : null
@@ -37,12 +69,27 @@ if (isPostgres) {
       try {
         await client.query('BEGIN');
         const txDb = {
-          async query(sql, params = []) { return client.query(sql, params); },
-          async get(sql, params = []) { const r = await client.query(sql, params); return r.rows[0] || null; },
-          async all(sql, params = []) { const r = await client.query(sql, params); return r.rows; },
+          async query(sql, params = []) {
+            return client.query(toPostgresSql(sql), params);
+          },
+          async get(sql, params = []) {
+            const r = await client.query(toPostgresSql(sql), params);
+            return r.rows[0] || null;
+          },
+          async all(sql, params = []) {
+            const r = await client.query(toPostgresSql(sql), params);
+            return r.rows;
+          },
           async run(sql, params = []) {
-            const r = await client.query(sql, params);
-            return { changes: r.rowCount, lastInsertRowid: r.rows && r.rows[0] ? r.rows[0].id : null };
+            let pgSql = sql.trim();
+            if (pgSql.toUpperCase().startsWith('INSERT') && !pgSql.toUpperCase().includes('RETURNING')) {
+              pgSql += ' RETURNING id';
+            }
+            const r = await client.query(toPostgresSql(pgSql), params);
+            return {
+              changes: r.rowCount,
+              lastInsertRowid: r.rows && r.rows[0] ? r.rows[0].id : null
+            };
           }
         };
         const result = await callback(txDb);
@@ -58,7 +105,11 @@ if (isPostgres) {
   };
 } else {
   const Database = require('better-sqlite3');
-  const dbPath = path.resolve(__dirname, '../data/hospital.db');
+  const dataDir = path.resolve(__dirname, '../data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const dbPath = path.resolve(dataDir, 'hospital.db');
   const sqlite = new Database(dbPath);
 
   // Enable WAL mode and foreign keys
@@ -102,9 +153,9 @@ if (isPostgres) {
       sqlite.exec('BEGIN IMMEDIATE');
       try {
         const txDb = {
-          get: (sql, params = []) => sqlite.prepare(normalizeSql(sql)).get(...params) || null,
-          all: (sql, params = []) => sqlite.prepare(normalizeSql(sql)).all(...params),
-          run: (sql, params = []) => {
+          get: async (sql, params = []) => sqlite.prepare(normalizeSql(sql)).get(...params) || null,
+          all: async (sql, params = []) => sqlite.prepare(normalizeSql(sql)).all(...params),
+          run: async (sql, params = []) => {
             const info = sqlite.prepare(normalizeSql(sql)).run(...params);
             return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };
           }

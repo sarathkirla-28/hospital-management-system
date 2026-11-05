@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
 
     // Atomic transaction for creating User and Patient profile
     const result = await db.transaction(async (tx) => {
-      const userRes = tx.run(
+      const userRes = await tx.run(
         `INSERT INTO users (email, password_hash, role, full_name, phone, status)
          VALUES (?, ?, 'patient', ?, ?, 'active')`,
         [email.toLowerCase().trim(), password_hash, full_name.trim(), phone || null]
@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
 
       const userId = userRes.lastInsertRowid;
 
-      const patientRes = tx.run(
+      const patientRes = await tx.run(
         `INSERT INTO patients (user_id, dob, gender, blood_group, address, emergency_contact)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [userId, dob || null, gender || null, blood_group || null, address || null, emergency_contact || null]

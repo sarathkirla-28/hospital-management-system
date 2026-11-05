@@ -188,7 +188,7 @@ router.post('/doctors', async (req, res) => {
     const password_hash = await bcrypt.hash(password, salt);
 
     const result = await db.transaction(async (tx) => {
-      const userRes = tx.run(
+      const userRes = await tx.run(
         `INSERT INTO users (email, password_hash, role, full_name, phone, status)
          VALUES (?, ?, 'doctor', ?, ?, 'active')`,
         [email.toLowerCase().trim(), password_hash, full_name.trim(), phone || null]
@@ -196,9 +196,9 @@ router.post('/doctors', async (req, res) => {
 
       const userId = userRes.lastInsertRowid;
 
-      const docRes = tx.run(
+      const docRes = await tx.run(
         `INSERT INTO doctors (user_id, department_id, specialization, qualification, experience_years, consultation_fee, room_number, bio, is_available)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, true)`,
         [
           userId,
           department_id,
@@ -216,9 +216,9 @@ router.post('/doctors', async (req, res) => {
       // Seed default schedule (Monday - Friday 09:00 - 13:00)
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
       for (const d of days) {
-        tx.run(
+        await tx.run(
           `INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, slot_duration_minutes, is_active)
-           VALUES (?, ?, '09:00', '13:00', 30, 1)`,
+           VALUES (?, ?, '09:00', '13:00', 30, true)`,
           [docId, d]
         );
       }
@@ -251,12 +251,12 @@ router.put('/doctors/:id', async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      tx.run(
+      await tx.run(
         'UPDATE users SET full_name = COALESCE(?, full_name), phone = COALESCE(?, phone), status = COALESCE(?, status) WHERE id = ?',
         [full_name, phone, status, doctor.user_id]
       );
 
-      tx.run(
+      await tx.run(
         `UPDATE doctors 
          SET department_id = COALESCE(?, department_id),
              specialization = COALESCE(?, specialization),
@@ -267,7 +267,7 @@ router.put('/doctors/:id', async (req, res) => {
              bio = COALESCE(?, bio),
              is_available = COALESCE(?, is_available)
          WHERE id = ?`,
-        [department_id, specialization, qualification, experience_years, consultation_fee, room_number, bio, is_available !== undefined ? (is_available ? 1 : 0) : null, doctorId]
+        [department_id, specialization, qualification, experience_years, consultation_fee, room_number, bio, is_available !== undefined ? !!is_available : null, doctorId]
       );
     });
 
@@ -352,12 +352,12 @@ router.put('/appointments/:id/status', async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      tx.run(
+      await tx.run(
         'UPDATE appointments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [status, appointmentId]
       );
 
-      tx.run(
+      await tx.run(
         `INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, changed_by_user_id, comments)
          VALUES (?, ?, ?, ?, ?)`,
         [appointmentId, appointment.status, status, req.user.id, notes || `Status changed by Administrator (${req.user.full_name})`]
@@ -438,6 +438,34 @@ router.get('/export-csv', async (req, res) => {
   } catch (err) {
     console.error('Error generating CSV export:', err);
     res.status(500).json({ error: 'Failed to generate CSV export.' });
+  }
+});
+
+// POST /api/admin/departments (Add New Department)
+router.post('/departments', async (req, res) => {
+  try {
+    const { name, code, description, head_doctor } = req.body;
+    if (!name || !code) {
+      return res.status(400).json({ error: 'Department name and code are required.' });
+    }
+
+    const existing = await db.get('SELECT id FROM departments WHERE code = ? OR name = ?', [code.toUpperCase().trim(), name.trim()]);
+    if (existing) {
+      return res.status(409).json({ error: 'A department with this name or code already exists.' });
+    }
+
+    const result = await db.run(
+      'INSERT INTO departments (name, code, description, head_doctor) VALUES (?, ?, ?, ?)',
+      [name.trim(), code.toUpperCase().trim(), description || null, head_doctor || null]
+    );
+
+    res.status(201).json({
+      message: 'Department created successfully.',
+      departmentId: result.lastInsertRowid
+    });
+  } catch (err) {
+    console.error('Error creating department:', err);
+    res.status(500).json({ error: 'Failed to create department.' });
   }
 });
 

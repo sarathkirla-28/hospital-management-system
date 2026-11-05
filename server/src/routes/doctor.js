@@ -98,14 +98,14 @@ router.put('/appointments/:id/status', async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      tx.run(
+      await tx.run(
         `UPDATE appointments 
          SET status = ?, doctor_notes = COALESCE(?, doctor_notes), updated_at = CURRENT_TIMESTAMP 
          WHERE id = ?`,
         [status, doctor_notes || null, appointmentId]
       );
 
-      tx.run(
+      await tx.run(
         `INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, changed_by_user_id, comments)
          VALUES (?, ?, ?, ?, ?)`,
         [appointmentId, appointment.status, status, req.user.id, `Status updated by Doctor (${req.user.full_name})`]
@@ -123,7 +123,7 @@ router.put('/appointments/:id/status', async (req, res) => {
 router.put('/availability', async (req, res) => {
   try {
     const { is_available } = req.body;
-    const availVal = is_available ? 1 : 0;
+    const availVal = !!is_available;
 
     await db.run(
       'UPDATE doctors SET is_available = ? WHERE id = ?',
@@ -151,12 +151,12 @@ router.post('/schedules', async (req, res) => {
 
     await db.transaction(async (tx) => {
       // Clear existing schedules for this doctor
-      tx.run('DELETE FROM doctor_schedules WHERE doctor_id = ?', [req.doctorId]);
+      await tx.run('DELETE FROM doctor_schedules WHERE doctor_id = ?', [req.doctorId]);
 
       for (const s of schedules) {
-        tx.run(
+        await tx.run(
           `INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, slot_duration_minutes, is_active)
-           VALUES (?, ?, ?, ?, ?, 1)`,
+           VALUES (?, ?, ?, ?, ?, true)`,
           [req.doctorId, s.day_of_week, s.start_time, s.end_time, s.slot_duration_minutes || 30]
         );
       }

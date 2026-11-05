@@ -114,7 +114,7 @@ router.post('/appointments', async (req, res) => {
     try {
       newAppointment = await db.transaction(async (tx) => {
         // 1. Check if slot is already occupied
-        const existing = tx.get(
+        const existing = await tx.get(
           `SELECT id FROM appointments 
            WHERE doctor_id = ? AND appointment_date = ? AND slot_time = ? AND status != 'Cancelled'`,
           [doctor_id, appointment_date, slot_time]
@@ -129,14 +129,14 @@ router.post('/appointments', async (req, res) => {
         const appNumber = `APT-${new Date().getFullYear()}-${randomSuffix}`;
 
         // 3. Insert appointment
-        const appRes = tx.run(
+        const appRes = await tx.run(
           `INSERT INTO appointments (appointment_number, patient_id, doctor_id, department_id, appointment_date, slot_time, status, patient_symptoms)
            VALUES (?, ?, ?, ?, ?, ?, 'Confirmed', ?)`,
           [appNumber, req.patientId, doctor_id, doctor.department_id, appointment_date, slot_time, symptoms || null]
         );
 
         // 4. Log status history
-        tx.run(
+        await tx.run(
           `INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, changed_by_user_id, comments)
            VALUES (?, NULL, 'Confirmed', ?, 'Appointment booked online by patient')`,
           [appRes.lastInsertRowid, req.user.id]
@@ -198,12 +198,12 @@ router.put('/appointments/:id/cancel', async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      tx.run(
+      await tx.run(
         "UPDATE appointments SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         [appointmentId]
       );
 
-      tx.run(
+      await tx.run(
         `INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, changed_by_user_id, comments)
          VALUES (?, ?, 'Cancelled', ?, ?)`,
         [appointmentId, appointment.status, req.user.id, reason || 'Cancelled by patient']
@@ -251,7 +251,7 @@ router.put('/appointments/:id/reschedule', async (req, res) => {
     try {
       await db.transaction(async (tx) => {
         // Check slot availability
-        const slotCheck = tx.get(
+        const slotCheck = await tx.get(
           `SELECT id FROM appointments 
            WHERE doctor_id = ? AND appointment_date = ? AND slot_time = ? AND status != 'Cancelled' AND id != ?`,
           [appointment.doctor_id, new_date, new_slot, appointmentId]
@@ -261,14 +261,14 @@ router.put('/appointments/:id/reschedule', async (req, res) => {
           throw new Error('SLOT_OCCUPIED');
         }
 
-        tx.run(
+        await tx.run(
           `UPDATE appointments 
            SET appointment_date = ?, slot_time = ?, status = 'Confirmed', updated_at = CURRENT_TIMESTAMP 
            WHERE id = ?`,
           [new_date, new_slot, appointmentId]
         );
 
-        tx.run(
+        await tx.run(
           `INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, changed_by_user_id, comments)
            VALUES (?, ?, 'Confirmed', ?, 'Rescheduled by patient')`,
           [appointmentId, appointment.status, req.user.id]
