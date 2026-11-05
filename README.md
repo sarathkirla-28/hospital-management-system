@@ -1,10 +1,19 @@
 # Intelligent Hospital Management System (Hospital Appointment Booking System)
 
+[![Live Web App](https://img.shields.io/badge/Vercel-Live%20Frontend-brightgreen)](https://client-gamma-eight-82.vercel.app)
+[![API Backend](https://img.shields.io/badge/Render-Live%20Backend-blue)](https://hospital-management-backend-vaky.onrender.com/api/health)
+[![Database](https://img.shields.io/badge/PostgreSQL-Render%20Cloud-blueviolet)](https://dashboard.render.com/)
 [![Test Suite](https://img.shields.io/badge/Test%20Suite-16%2F16%20Passed%20(100%25)-success)](./TEST_RESULTS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
 [![Academic Evaluation](https://img.shields.io/badge/GITAM%20B.Tech-Internship%202026-blue)](https://www.gitam.edu/)
 
 A full-stack, responsive hospital appointment booking and clinical administration web application designed to eliminate patient waiting queues, guarantee zero double-booking through relational database constraints, and provide comprehensive administrative oversight.
+
+### 🌐 Verified Live Deployments
+* **Production Web App (Vercel):** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
+* **API Backend Server (Render):** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
+* **Backend Health Check:** [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
+* **Database:** Production PostgreSQL on Render (`hospital-db`)
 
 ---
 

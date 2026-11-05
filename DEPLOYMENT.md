@@ -5,7 +5,21 @@
 
 ---
 
-## 1. Local Execution Instructions
+## 1. Verified Live Cloud Deployment
+
+* **Live Frontend Website (Vercel):** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
+  * Secondary Production URL: [https://client-5qf0xvb65-sarathkirla-28.vercel.app](https://client-5qf0xvb65-sarathkirla-28.vercel.app)
+* **Live API Backend Server (Render):** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
+  * Live Health Check: [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
+* **Production Database (Render PostgreSQL):**
+  * Database Name: `hospital-db` (`hospital_db_2b0i`)
+  * Region: Oregon (US West)
+  * Status: **Available / Persistent Production Database**
+  * Schema & Seed: Fully initialized with 7 relational tables, unique active booking constraint, departments, doctors, and demo users.
+
+---
+
+## 2. Local Execution Instructions
 
 ### Prerequisites
 * **Node.js:** v18.0.0 or higher (v24 LTS recommended)
