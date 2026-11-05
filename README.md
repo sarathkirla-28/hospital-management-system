@@ -1,4 +1,4 @@
-# Intelligent Hospital Management System (Hospital Appointment Booking System)
+# Intelligent Hospital Management System
 
 [![Live Web App](https://img.shields.io/badge/Vercel-Live%20Frontend-brightgreen)](https://client-gamma-eight-82.vercel.app)
 [![API Backend](https://img.shields.io/badge/Render-Live%20Backend-blue)](https://hospital-management-backend-vaky.onrender.com/api/health)
@@ -7,13 +7,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
 [![Academic Evaluation](https://img.shields.io/badge/GITAM%20B.Tech-Internship%202026-blue)](https://www.gitam.edu/)
 
-A full-stack, responsive hospital appointment booking and clinical administration web application designed to eliminate patient waiting queues, guarantee zero double-booking through relational database constraints, and provide comprehensive administrative oversight.
+> **Full-Stack Hospital Management System with Patient Registration, Doctor Management, Appointment Booking, Admin Dashboard, JWT Authentication, and PostgreSQL.**
 
-### 🌐 Verified Live Deployments
-* **Production Web App (Vercel):** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
-* **API Backend Server (Render):** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
-* **Backend Health Check:** [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
-* **Database:** Production PostgreSQL on Render (`hospital-db`)
+---
+
+## 🌐 Live Deployments
+
+Both the frontend and backend are deployed and publicly accessible:
+
+1. **Frontend (Vercel):** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
+2. **Backend API (Render):** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
+   * **API Health Check:** [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
+   * **Production Database:** PostgreSQL on Render Cloud (`hospital-db`)
 
 ---
 
