@@ -11,14 +11,12 @@
 
 ---
 
-## 🌐 Live Deployments
+### 🚀 Verified Live Deployments
 
-Both the frontend and backend are deployed and publicly accessible:
-
-1. **Frontend (Vercel):** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
-2. **Backend API (Render):** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
-   * **API Health Check:** [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
-   * **Production Database:** PostgreSQL on Render Cloud (`hospital-db`)
+* 🌐 **Live Frontend:** [https://client-gamma-eight-82.vercel.app](https://client-gamma-eight-82.vercel.app)
+* ⚙️ **Backend API:** [https://hospital-management-backend-vaky.onrender.com](https://hospital-management-backend-vaky.onrender.com)
+* ❤️ **Backend Health Check:** [https://hospital-management-backend-vaky.onrender.com/api/health](https://hospital-management-backend-vaky.onrender.com/api/health)
+* 🗄️ **Database:** PostgreSQL Cloud Instance on Render (`hospital-db`)
 
 ---
 
